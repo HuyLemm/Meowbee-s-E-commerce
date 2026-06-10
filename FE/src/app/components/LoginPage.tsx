@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { BeeLogo, BackgroundDecor, LoadingSpinner, CheckIcon } from "../utils/BrandDecor";
 import {
   Eye,
@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 import { validateLogin } from "../utils/validate";
-// import { loginApi } from "../api/auth.api";
+import { loginApi } from "../api/auth.api";
 
 interface LoginPageProps {
   onLogin: (username: string) => void;
@@ -26,7 +26,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
   const [errorMessage, setErrorMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     const validation = validateLogin(email, password);
@@ -39,44 +39,41 @@ export function LoginPage({ onLogin }: LoginPageProps) {
 
     setIsLoading(true);
 
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const result = await loginApi({
+        email,
+        password,
+        rememberMe,
+      });
 
-      if (email === "demo@meowbee.com" && password === "Password@123") {
-        onLogin(email.split("@")[0]);
-      } else {
-        setErrorMessage("Wrong email or password!");
-        setFormState("error");
+      if (result.success) {
+        console.log(result);
+        if (result.accessToken) {
+          localStorage.setItem("token", result.accessToken);
+        }
+
+        if (result.user) {
+          localStorage.setItem("user", JSON.stringify(result.user));
+        }
+
+        const username =
+          result.user?.fullName ||
+          result.user?.email?.split("@")[0] ||
+          email.split("@")[0];
+
+        onLogin(username);
+        return;
       }
-    }, 900);
+
+      setErrorMessage(result.message || "Wrong email or password!");
+      setFormState("error");
+    } catch (error) {
+      setErrorMessage("Cannot connect to server. Please try again.");
+      setFormState("error");
+    } finally {
+      setIsLoading(false);
+    }
   };
-    
-  // const handleSubmit = async (e: React.FormEvent) => {
-  //   e.preventDefault();
-  //   setIsLoading(true);
-
-  //   try {
-  //     const result = await loginApi({
-  //       email,
-  //       password,
-  //       rememberMe,
-  //     });
-
-  //     if (result.success && result.username) {
-  //       if (result.token) {
-  //         localStorage.setItem("token", result.token);
-  //       }
-
-  //       onLogin(result.username);
-  //     } else {
-  //       setFormState("error");
-  //     }
-  //   } catch (error) {
-  //     setFormState("error");
-  //   } finally {
-  //     setIsLoading(false);
-  //   }
-  // };
 
   return (
     <div
@@ -358,7 +355,7 @@ export function LoginPage({ onLogin }: LoginPageProps) {
             className="text-xs"
             style={{ color: "#92400e" }}
           >
-            <strong>Demo:</strong> demo@meowbee.com · password123
+            <strong>Demo:</strong> user123@gmail.com · Test@123
           </p>
         </div>
       </div>

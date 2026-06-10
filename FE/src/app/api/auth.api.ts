@@ -1,4 +1,4 @@
-const API_BASE_URL = "http://localhost:3000/api";
+const API_BASE_URL = "http://localhost:5000/api";
 
 export interface LoginRequest {
   email: string;
@@ -6,12 +6,18 @@ export interface LoginRequest {
   rememberMe?: boolean;
 }
 
+export interface User {
+  id: string;
+  email: string;
+  fullName: string;
+  role: string;
+}
+
 export interface LoginResponse {
   success: boolean;
-  username?: string;
-  email?: string;
-  token?: string;
-  message?: string;
+  message: string;
+  accessToken?: string;
+  user?: User;
 }
 
 export const loginApi = async (
@@ -37,21 +43,26 @@ export const loginApi = async (
   return result;
 };
 
-export const logoutApi = async () => {
+export interface VerifyTokenResponse {
+  success: boolean;
+  message?: string;
+  user?: {
+    id: string;
+    email: string;
+    fullName: string;
+    role: string;
+  };
+}
+
+export const verifyTokenApi = async (): Promise<VerifyTokenResponse> => {
   const token = localStorage.getItem("token");
 
-  await fetch(`${API_BASE_URL}/auth/logout`, {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  localStorage.removeItem("token");
-};
-
-export const getCurrentUserApi = async () => {
-  const token = localStorage.getItem("token");
+  if (!token) {
+    return {
+      success: false,
+      message: "No token found",
+    };
+  }
 
   const response = await fetch(`${API_BASE_URL}/auth/me`, {
     method: "GET",
@@ -60,5 +71,14 @@ export const getCurrentUserApi = async () => {
     },
   });
 
-  return response.json();
+  const result = await response.json();
+
+  if (!response.ok) {
+    return {
+      success: false,
+      message: result.message || "Token expired or invalid",
+    };
+  }
+
+  return result;
 };
