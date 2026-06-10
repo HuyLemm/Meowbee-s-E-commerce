@@ -1,11 +1,5 @@
 const API_BASE_URL = "http://localhost:5000/api";
 
-export interface LoginRequest {
-  email: string;
-  password: string;
-  rememberMe?: boolean;
-}
-
 export interface User {
   id: string;
   email: string;
@@ -13,10 +7,23 @@ export interface User {
   role: string;
 }
 
+export interface LoginRequest {
+  email: string;
+  password: string;
+  rememberMe?: boolean;
+}
+
 export interface LoginResponse {
   success: boolean;
   message: string;
   accessToken?: string;
+  refreshToken?: string;
+  user?: User;
+}
+
+export interface VerifyTokenResponse {
+  success: boolean;
+  message?: string;
   user?: User;
 }
 
@@ -32,27 +39,8 @@ export const loginApi = async (
   });
 
   const result = await response.json();
-
-  if (!response.ok) {
-    return {
-      success: false,
-      message: result.message || "Login failed",
-    };
-  }
-
   return result;
 };
-
-export interface VerifyTokenResponse {
-  success: boolean;
-  message?: string;
-  user?: {
-    id: string;
-    email: string;
-    fullName: string;
-    role: string;
-  };
-}
 
 export const verifyTokenApi = async (): Promise<VerifyTokenResponse> => {
   const token = localStorage.getItem("token");
@@ -72,13 +60,27 @@ export const verifyTokenApi = async (): Promise<VerifyTokenResponse> => {
   });
 
   const result = await response.json();
+  return result;
+};
 
-  if (!response.ok) {
+export const refreshTokenApi = async (): Promise<LoginResponse> => {
+  const refreshToken = localStorage.getItem("refreshToken");
+
+  if (!refreshToken) {
     return {
       success: false,
-      message: result.message || "Token expired or invalid",
+      message: "No refresh token found",
     };
   }
 
+  const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ refreshToken }),
+  });
+
+  const result = await response.json();
   return result;
 };

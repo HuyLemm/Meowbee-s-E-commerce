@@ -1,36 +1,68 @@
 import { useEffect, useState } from "react";
 import { LoginPage } from "./components/LoginPage";
 import { HomePage } from "./components/HomePage";
-import { verifyTokenApi } from "./api/auth.api";
+import { verifyTokenApi, refreshTokenApi } from "./api/auth.api";
 
 export default function App() {
   const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
   const [checkingAuth, setCheckingAuth] = useState(true);
 
   useEffect(() => {
-    const checkToken = async () => {
+    const checkAuth = async () => {
       const token = localStorage.getItem("token");
+      const refreshToken = localStorage.getItem("refreshToken");
 
-      if (!token) {
+      if (!token && !refreshToken) {
         setCheckingAuth(false);
         return;
       }
 
-      const result = await verifyTokenApi();
+      const verifyResult = await verifyTokenApi();
 
-      if (result.success && result.user) {
-        localStorage.setItem("user", JSON.stringify(result.user));
-        setLoggedInUser(result.user.fullName || result.user.email);
-      } else {
-        localStorage.removeItem("token");
-        localStorage.removeItem("user");
-        setLoggedInUser(null);
+      if (verifyResult.success && verifyResult.user) {
+        localStorage.setItem("user", JSON.stringify(verifyResult.user));
+        setLoggedInUser(verifyResult.user.fullName || verifyResult.user.email);
+        setCheckingAuth(false);
+        return;
       }
 
+      const refreshResult = await refreshTokenApi();
+      console.log("Refresh token API result:", refreshResult);
+
+      if (refreshResult.success && refreshResult.accessToken) {
+        localStorage.setItem("token", refreshResult.accessToken);
+
+        if (refreshResult.refreshToken) {
+          localStorage.setItem("refreshToken", refreshResult.refreshToken);
+        }
+
+        if (refreshResult.user) {
+          localStorage.setItem("user", JSON.stringify(refreshResult.user));
+          setLoggedInUser(
+            refreshResult.user.fullName || refreshResult.user.email
+          );
+        } else {
+          const savedUser = localStorage.getItem("user");
+
+          if (savedUser) {
+            const parsedUser = JSON.parse(savedUser);
+            setLoggedInUser(parsedUser.fullName || parsedUser.email);
+          }
+        }
+
+        setCheckingAuth(false);
+        return;
+      }
+
+      localStorage.removeItem("token");
+      localStorage.removeItem("refreshToken");
+      localStorage.removeItem("user");
+      localStorage.removeItem("username");
+      setLoggedInUser(null);
       setCheckingAuth(false);
     };
 
-    checkToken();
+    checkAuth();
   }, []);
 
   const handleLogin = (username: string) => {
@@ -39,8 +71,10 @@ export default function App() {
 
   const handleLogout = () => {
     localStorage.removeItem("token");
+    localStorage.removeItem("refreshToken");
     localStorage.removeItem("user");
     localStorage.removeItem("username");
+
     setLoggedInUser(null);
   };
 

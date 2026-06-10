@@ -59,11 +59,22 @@ class AuthController {
                 }
             );
 
+            const refreshToken = jwt.sign(
+                {
+                    id: user.id,
+                },
+                process.env.JWT_REFRESH_SECRET,
+                {
+                    expiresIn: process.env.JWT_REFRESH_EXPIRES_IN || "7d",
+                }
+            );
+
             return res.status(200).json({
                 success: true,
                 message:
                     "Login successful",
                 accessToken,
+                refreshToken,
                 user: {
                     id: user.id,
                     email: user.email,
@@ -83,15 +94,74 @@ class AuthController {
         }
     };
 
-    RefreshToken = async (
-        req,
-        res
-    ) => {
-        return res.status(200).json({
-            success: true,
-            message:
-                "Refresh token endpoint",
-        });
+    RefreshToken = async (req, res) => {
+        try {
+            const { refreshToken } = req.body;
+
+            if (!refreshToken) {
+                return res.status(401).json({
+                    success: false,
+                    message: "Refresh token not found",
+                });
+            }
+
+            if (!process.env.JWT_REFRESH_SECRET) {
+                return res.status(500).json({
+                    success: false,
+                    message: "JWT refresh secret is missing",
+                });
+            }
+
+            const decoded = jwt.verify(
+                refreshToken,
+                process.env.JWT_REFRESH_SECRET
+            );
+
+            const user = await User.findByPk(decoded.id);
+
+            if (!user) {
+                return res.status(404).json({
+                    success: false,
+                    message: "User not found",
+                });
+            }
+
+            const newAccessToken = jwt.sign(
+                {
+                    id: user.id,
+                    email: user.email,
+                    role: user.role,
+                },
+                process.env.JWT_SECRET,
+                {
+                    expiresIn: process.env.JWT_EXPIRES_IN || "15m",
+                }
+            );
+
+            return res.status(200).json({
+                success: true,
+                message: "Access token refreshed successfully",
+                accessToken: newAccessToken,
+                user: {
+                    id: user.id,
+                    email: user.email,
+                    fullName: user.fullName,
+                    role: user.role,
+                },
+            });
+        } catch (error) {
+            if (error.name === "TokenExpiredError") {
+                return res.status(401).json({
+                    success: false,
+                    message: "Refresh token expired",
+                });
+            }
+
+            return res.status(401).json({
+                success: false,
+                message: "Invalid refresh token",
+            });
+        }
     };
 
     Logout = async (req, res) => {

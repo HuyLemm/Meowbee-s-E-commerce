@@ -52,6 +52,10 @@ export function LoginPage({ onLogin }: LoginPageProps) {
           localStorage.setItem("token", result.accessToken);
         }
 
+        if (result.refreshToken) {
+          localStorage.setItem("refreshToken", result.refreshToken);
+        }
+
         if (result.user) {
           localStorage.setItem("user", JSON.stringify(result.user));
         }
