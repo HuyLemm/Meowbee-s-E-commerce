@@ -13,74 +13,57 @@ export interface LoginRequest {
   rememberMe?: boolean;
 }
 
-export interface LoginResponse {
+export interface AuthResponse {
   success: boolean;
-  message: string;
+  message?: string;
   accessToken?: string;
   refreshToken?: string;
   user?: User;
 }
 
-export interface VerifyTokenResponse {
-  success: boolean;
-  message?: string;
-  user?: User;
-}
+const request = async <T>(endpoint: string, options?: RequestInit): Promise<T> => {
+  const res = await fetch(`${API_BASE_URL}${endpoint}`, options);
+  return res.json();
+};
 
-export const loginApi = async (
-  data: LoginRequest
-): Promise<LoginResponse> => {
-  const response = await fetch(`${API_BASE_URL}/auth/login`, {
+const jsonHeader = {
+  "Content-Type": "application/json",
+};
+
+export const loginApi = (data: LoginRequest): Promise<AuthResponse> =>
+  request("/auth/login", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: jsonHeader,
     body: JSON.stringify(data),
   });
 
-  const result = await response.json();
-  return result;
-};
-
-export const verifyTokenApi = async (): Promise<VerifyTokenResponse> => {
+export const verifyTokenApi = (): Promise<AuthResponse> => {
   const token = localStorage.getItem("token");
 
   if (!token) {
-    return {
-      success: false,
-      message: "No token found",
-    };
+    return Promise.resolve({ success: false, message: "No token found" });
   }
 
-  const response = await fetch(`${API_BASE_URL}/auth/me`, {
-    method: "GET",
+  return request("/auth/me", {
     headers: {
       Authorization: `Bearer ${token}`,
     },
   });
-
-  const result = await response.json();
-  return result;
 };
 
-export const refreshTokenApi = async (): Promise<LoginResponse> => {
+export const refreshTokenApi = (): Promise<AuthResponse> => {
   const refreshToken = localStorage.getItem("refreshToken");
 
   if (!refreshToken) {
-    return {
+    return Promise.resolve({
       success: false,
       message: "No refresh token found",
-    };
+    });
   }
 
-  const response = await fetch(`${API_BASE_URL}/auth/refresh-token`, {
+  return request("/auth/refresh-token", {
     method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: jsonHeader,
     body: JSON.stringify({ refreshToken }),
   });
-
-  const result = await response.json();
-  return result;
 };

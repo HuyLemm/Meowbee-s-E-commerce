@@ -6,7 +6,7 @@ import {
     comparePassword,
 } from "../utils/hashPassword.js";
 
-class AuthController {
+class LoginController {
     Login = async (req, res) => {
         try {
             const { email, password } = req.body;
@@ -256,4 +256,4 @@ class AuthController {
     };
 }
 
-export default new AuthController();
+export default new LoginController();

@@ -1,6 +1,6 @@
 import { Router } from "express";
 
-import AuthController from "../controllers/AuthController.js";
+import LoginController from "../controllers/LoginController.js";
 
 const router = Router();
 
@@ -12,16 +12,16 @@ const router = Router();
 
 // router.post(
 //   "/auth/login",
-//   AuthController.login
+//   LoginController.login
 // );
 
-router.post("/auth/login", AuthController.Login);
-router.post("/auth/refresh-token", AuthController.RefreshToken);
-router.post("/auth/logout", AuthController.Logout);
-router.post("/auth/forgot-password", AuthController.ForgotPassword);
-router.post("/auth/reset-password", AuthController.ResetPassword);
+router.post("/auth/login", LoginController.Login);
+router.post("/auth/refresh-token", LoginController.RefreshToken);
+router.post("/auth/logout", LoginController.Logout);
+router.post("/auth/forgot-password", LoginController.ForgotPassword);
+router.post("/auth/reset-password", LoginController.ResetPassword);
 
-router.get("/auth/me", AuthController.getMe);
+router.get("/auth/me", LoginController.getMe);
 
 
 export default router;

@@ -3,88 +3,55 @@ import { LoginPage } from "./components/LoginPage";
 import { HomePage } from "./components/HomePage";
 import { verifyTokenApi, refreshTokenApi } from "./api/auth.api";
 
+const clearAuth = () =>
+  ["token", "refreshToken", "user", "username"].forEach((key) =>
+    localStorage.removeItem(key)
+  );
+
+const getName = (user: any) => user?.fullName || user?.email || null;
+
 export default function App() {
-  const [loggedInUser, setLoggedInUser] = useState<string | null>(null);
-  const [checkingAuth, setCheckingAuth] = useState(true);
+  const [user, setUser] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem("token");
-      const refreshToken = localStorage.getItem("refreshToken");
+      try {
+        if (!localStorage.getItem("token") && !localStorage.getItem("refreshToken")) return;
 
-      if (!token && !refreshToken) {
-        setCheckingAuth(false);
-        return;
-      }
+        let result = await verifyTokenApi();
 
-      const verifyResult = await verifyTokenApi();
+        if (!result.success) {
+          result = await refreshTokenApi();
 
-      if (verifyResult.success && verifyResult.user) {
-        localStorage.setItem("user", JSON.stringify(verifyResult.user));
-        setLoggedInUser(verifyResult.user.fullName || verifyResult.user.email);
-        setCheckingAuth(false);
-        return;
-      }
-
-      const refreshResult = await refreshTokenApi();
-      console.log("Refresh token API result:", refreshResult);
-
-      if (refreshResult.success && refreshResult.accessToken) {
-        localStorage.setItem("token", refreshResult.accessToken);
-
-        if (refreshResult.refreshToken) {
-          localStorage.setItem("refreshToken", refreshResult.refreshToken);
+          if (result.accessToken) localStorage.setItem("token", result.accessToken);
+          if (result.refreshToken) localStorage.setItem("refreshToken", result.refreshToken);
         }
 
-        if (refreshResult.user) {
-          localStorage.setItem("user", JSON.stringify(refreshResult.user));
-          setLoggedInUser(
-            refreshResult.user.fullName || refreshResult.user.email
-          );
+        if (result.success && result.user) {
+          localStorage.setItem("user", JSON.stringify(result.user));
+          setUser(getName(result.user));
         } else {
-          const savedUser = localStorage.getItem("user");
-
-          if (savedUser) {
-            const parsedUser = JSON.parse(savedUser);
-            setLoggedInUser(parsedUser.fullName || parsedUser.email);
-          }
+          clearAuth();
         }
-
-        setCheckingAuth(false);
-        return;
+      } finally {
+        setLoading(false);
       }
-
-      localStorage.removeItem("token");
-      localStorage.removeItem("refreshToken");
-      localStorage.removeItem("user");
-      localStorage.removeItem("username");
-      setLoggedInUser(null);
-      setCheckingAuth(false);
     };
 
     checkAuth();
   }, []);
 
-  const handleLogin = (username: string) => {
-    setLoggedInUser(username);
+  const logout = () => {
+    clearAuth();
+    setUser(null);
   };
 
-  const handleLogout = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("refreshToken");
-    localStorage.removeItem("user");
-    localStorage.removeItem("username");
+  if (loading) return <div>Loading...</div>;
 
-    setLoggedInUser(null);
-  };
-
-  if (checkingAuth) {
-    return <div>Loading...</div>;
-  }
-
-  if (!loggedInUser) {
-    return <LoginPage onLogin={handleLogin} />;
-  }
-
-  return <HomePage username={loggedInUser} onLogout={handleLogout} />;
+  return user ? (
+    <HomePage username={user} onLogout={logout} />
+  ) : (
+    <LoginPage onLogin={setUser} />
+  );
 }
